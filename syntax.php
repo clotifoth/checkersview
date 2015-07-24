@@ -32,8 +32,8 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
             'email'  => 'frederick.brunn@stonybrook.edu; clotifoth@aim.com',
             'date'   => '2015-07-23',
             'name'   => 'Checkers View Plugin',
-            'desc'   => $lang['desc'],
-            'url'    => 'https://github.com/clotifoth/'
+            'desc'   => 'Creates a checkerboard with an image for each piece',
+            'url'    => 'https://github.com/clotifoth/checkersview/'
         );
     }
 
