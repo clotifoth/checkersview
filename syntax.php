@@ -1,6 +1,7 @@
 <?php
 /**
  * Plugin checkersview: Creates a checkers diagram
+ * @author: Frederick Brunn
  */
 
 if(!defined('DOKU_INC')) define('DOKU_INC',realpath(dirname(__FILE__).'/../../../').'/');
@@ -15,7 +16,7 @@ require_once(DOKU_PLUGIN.'syntax.php');
 class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
 
     /**
-     * function constructor
+     * Constructor.
      */
     function syntax_plugin_checkersview(){
       // enable direct access to language strings
@@ -23,7 +24,7 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
     }
 
     /**
-     * return some info
+     * Return the relevant info for this plugin. Author, email etc.
      */
     function getInfo(){
         return array(
@@ -32,7 +33,7 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
             'date'   => '2015-07-23',
             'name'   => 'Checkers View Plugin',
             'desc'   => $lang['desc'],
-            'url'    => 'www.example.com'
+            'url'    => 'https://github.com/clotifoth/'
         );
     }
 
@@ -52,14 +53,17 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
 
 
     /**
-     * Connect pattern to lexer
+     * Add this plugin as a delegate to the Doku renderer, using the wikisyntax 
+	 * string specified in the current language file as the triggering action.
      */
     function connectTo($mode) {
       $this->Lexer->addSpecialPattern('<'.$this->lang['checkerswikisyntax'].'>.+?</'.$this->lang['checkerswikisyntax'].'>',$mode,'plugin_checkersview');
     }
 
     /**
-     * Handle the match
+     * Upon being triggered, this function formulates the proper arguments from
+	 * the contents of the checkers tag. It looks for the pieces involved as well
+	 * as the borders requested in the first line.
      */
     function handle($match, $state, $pos, &$handler)
     {
@@ -74,9 +78,9 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
     }
 
     /**
-     * Create output
+     * Triggers the checkerboard renderer.
      */
-    function render($mode, &$renderer,$data)
+    function render($mode, &$renderer, $data)
     {
       if($mode == 'xhtml')
       {
@@ -88,6 +92,12 @@ class syntax_plugin_checkersview extends DokuWiki_Syntax_Plugin {
     }
 }
 
+/*
+ * Formulates filename for border pieces. Top and bottom / left and right share
+ * the same border pieces but don't necessarily need to. Ideally, cases should 
+ * be defined by calls to $lang so that other languages' letters for border names
+ * are applicable.
+ */
 function checkersboard_border_filename($border)
 {
 
@@ -104,6 +114,11 @@ function checkersboard_border_filename($border)
 }
 
 
+/*
+ * Formulates filename for game pieces. Ideally, special cases for black and white
+ * should be defined by calls to $lang so that other languages' letters for B and R
+ * are applicable.
+ */
 function checkersboard_piece_filename($piece, $square_color)
 {
   switch ($piece) {
@@ -136,7 +151,11 @@ function checkersboard_piece_filename($piece, $square_color)
   return IMAGE_PATH.$name.($square_color?'d':'l').'.png';
 }
 
-
+/* 
+ * Returns a fully rendered checkboard, given the content of the tags. Content
+ * is only accessed to parse for options (borders, width of checkerboard, starting
+ * square.) Returned checkerboard formatted in XHTML (of course.)
+ */
 function checkersboard_render($content)
 {
   static $table_xhtml;
@@ -209,13 +228,15 @@ function checkersboard_render($content)
                           . checkersboard_border_filename('BR')
                           . '" alt="" />',
                        );
-
+  /* The following regex basically searches out the selected options, which
+   * should be enclosed in parenthesis somewhere between the tags.
+   */
   preg_match('@^\s*(?:\((.*?)\))?(.*)$@s', $content, $matches);
 
   $params =& $matches[1];
 
-  // Number of files: any integer (default: 8)
-  $file_max = preg_match('@[0-9]+@', $params, $m) ? $m[0] : 8;
+  /* Determines width from the selected options presented. Defaults to 8. */
+  $columns = preg_match('@[0-9]+@', $params, $m) ? $m[0] : 8;
 
   $square_color_first = (strpos($params, 'b') !== false) ? 1 : 0;
 
@@ -225,28 +246,27 @@ function checkersboard_render($content)
                   'L' => (strpos($params, 'L') !== false),
                   'R' => (strpos($params, 'R') !== false));
 
-  // Render the board in XHTML
   $board =& $matches[2];
-  $xhtml = '';
+  $returned_xhtml_board = ''; // Stores XHTML formatted checkerboard.
 
   // Top border
   if ($border['T']) {
     if ($border['L'])
-      $xhtml .= $table_xhtml['TL'];
-    $xhtml .= str_repeat($table_xhtml['T'], $file_max);
+      $returned_xhtml_board .= $table_xhtml['TL'];
+    $returned_xhtml_board .= str_repeat($table_xhtml['T'], $columns);
     if ($border['R'])
-      $xhtml .= $table_xhtml['TR'];
-    $file = $file_max;
+      $returned_xhtml_board .= $table_xhtml['TR'];
+    $column_position = $columns;
   }
   else {
-    $file = 0;
+    $column_position = 0; 
     $square_color = $square_color_first;
     $square_color_first = 1 - $square_color_first;
   }
   
   if($border['L'] && !$border['T']) // HUGE cruft to get the first left border
   {                                 // to render correctly
-    $xhtml .= $table_xhtml['L'];
+    $returned_xhtml_board .= $table_xhtml['L'];
   }
   
   // Left border, board, right border
@@ -257,38 +277,38 @@ function checkersboard_render($content)
       continue;
     }
 
-    if ($file >= $file_max) {
-      $xhtml .= '<br style="height: 0px; visibility: hidden;" />';
-      $file = 0;
+    if ($column_position >= $columns) {
+      $returned_xhtml_board .= '<br />';
+      $column_position = 0;
       $square_color = $square_color_first;
       $square_color_first = 1 - $square_color_first;
       if ($border['L'])
-        $xhtml .= $table_xhtml['L'];
+        $returned_xhtml_board .= $table_xhtml['L'];
     }
 
     $key = $board[$i].$square_color;
 	
-    $xhtml .= $table_xhtml[$key];
+    $returned_xhtml_board .= $table_xhtml[$key];
     $square_color = 1 - $square_color;
-    $file++;
+    $column_position++;
     
 
-    if ($file >= $file_max) {
+    if ($column_position >= $columns) {
       if ($border['R'])
-        $xhtml .= $table_xhtml['R'];
+        $returned_xhtml_board .= $table_xhtml['R'];
     }
   }
 
   // Bottom border
   if ($border['B']) {
-    $xhtml .= '<br />';
+    $returned_xhtml_board .= '<br />';
     if ($border['L'])
-      $xhtml .= $table_xhtml['BL'];
-    $xhtml .= str_repeat($table_xhtml['B'], $file_max);
+      $returned_xhtml_board .= $table_xhtml['BL'];
+    $returned_xhtml_board .= str_repeat($table_xhtml['B'], $columns);
     if ($border['R'])
-      $xhtml .= $table_xhtml['BR'];
+      $returned_xhtml_board .= $table_xhtml['BR'];
   }
 
-  return $xhtml;
+  return $returned_xhtml_board;
 }
 

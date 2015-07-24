@@ -3,10 +3,20 @@
  * English language version.
  */
 
+ /*
+  * Listed description
+  */
 $lang['desc'] = 'Creates a checkerboard with an image for each piece';
 
+/*
+ * The pattern that will be searched for in tags to trigger checkerboard
+ * rendering.
+ */
 $lang['checkerswikisyntax'] = 'checkers'; // wikisyntax
 
+/*
+ * All possible checkers pieces.
+ */
 $lang['checkerspieces'] = 'BbRr';
 
 /** The possible options for a checkers board, listed in parenthesis anywhere
